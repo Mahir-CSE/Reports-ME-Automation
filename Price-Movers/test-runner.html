@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Price Movers Test Runner</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --muted: #6a7282; --border: #dfe3ea;
+    --accent: #1565c0; --accent-text: #fff; --input: #fff;
+    --pass: #1e7d3a; --pass-bg: #e3f4e8; --fail: #b3261e; --fail-bg: #fbe7e5;
+    --run: #8a5a00; --run-bg: #fff2d6; --idle-bg: #eef0f4; --skip-bg: #eceff3;
+    --code-bg: #0f1520; --code-text: #cfd6e4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #11141a; --card: #1a1f28; --text: #e6e9ef; --muted: #98a1b2; --border: #2c3341;
+      --accent: #4c9aff; --accent-text: #0b1220; --input: #12161e;
+      --pass: #6fd38d; --pass-bg: #173323; --fail: #ff8a80; --fail-bg: #3a1c1a;
+      --run: #ffcf66; --run-bg: #3a2f14; --idle-bg: #232a36; --skip-bg: #232a36;
+      --code-bg: #0a0d12; --code-text: #cfd6e4;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--border); }
+  .bar { max-width: 1200px; margin: 0 auto; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  h1 { font-size: 18px; margin: 0; margin-right: auto; }
+  .muted { color: var(--muted); }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; min-width: 0; }
+  .card.wide { grid-column: 1 / -1; }
+  .card-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .num { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-text); display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+  .card-head h2 { font-size: 15px; margin: 0; flex: 1; }
+  .card-body { padding: 12px 14px; display: grid; gap: 10px; }
+  label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  input, select { font: inherit; color: var(--text); background: var(--input); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hint { font-size: 12px; color: var(--muted); margin: 0; }
+  button { font: inherit; cursor: pointer; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 7px 12px; white-space: nowrap; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.play { padding: 5px 10px; font-weight: 600; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .pill { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--idle-bg); color: var(--muted); white-space: nowrap; }
+  .pill.running, .pill.queued { background: var(--run-bg); color: var(--run); }
+  .pill.passed { background: var(--pass-bg); color: var(--pass); }
+  .pill.failed { background: var(--fail-bg); color: var(--fail); }
+  .pill.skipped, .pill.stopped { background: var(--skip-bg); color: var(--muted); }
+  .live { font-size: 12px; color: var(--run); background: var(--run-bg); border-radius: 6px; padding: 6px 8px; display: none; overflow-wrap: anywhere; }
+  .live.show { display: block; }
+  .fail { display: none; background: var(--fail-bg); color: var(--fail); border-radius: 6px; padding: 8px 10px; font-size: 12px; }
+  .fail.show { display: block; }
+  .fail b { display: block; margin-bottom: 2px; }
+  .fail pre { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.4 ui-monospace, Consolas, monospace; color: var(--text); }
+  .results { display: none; margin: 0; padding-left: 18px; font-size: 12px; color: var(--pass); }
+  .results.show { display: block; }
+  .orders { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .orders h3 { font-size: 13px; margin: 0 0 6px; }
+  .order { display: grid; grid-template-columns: 64px 1fr 1fr auto auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px dashed var(--border); }
+  .order.head { border-top: 0; padding: 0; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .order .title { font-weight: 600; font-size: 13px; }
+  .order .detail { grid-column: 1 / -1; }
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; }
+  details.log { grid-column: 1 / -1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+  details.log summary { padding: 10px 14px; cursor: pointer; font-weight: 600; }
+  details.log pre { margin: 0; max-height: 360px; overflow: auto; background: var(--code-bg); color: var(--code-text); padding: 10px 14px; border-radius: 0 0 10px 10px; font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .summary { font-weight: 600; }
+  a { color: var(--accent); }
+  .conn { display: none; max-width: 1200px; margin: 0 auto 10px; padding: 8px 16px; border-radius: 8px; font-size: 13px; }
+  .conn.ok { display: block; background: var(--pass-bg); color: var(--pass); }
+  .conn.down { display: block; background: var(--fail-bg); color: var(--fail); }
+  .conn code { background: var(--card); color: var(--text); padding: 1px 6px; border-radius: 4px; }
+  @media (max-width: 560px) { .row2 { grid-template-columns: 1fr; } .order { grid-template-columns: 52px 1fr 1fr auto; } .order .pill { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Price Movers Test Runner</h1>
+    <span class="summary" id="summary">Ready</span>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:600">Speed
+      <select id="slowmo" style="width:auto">
+        <option value="0">Full speed</option>
+        <option value="300" selected>Slow (0.3s/action)</option>
+        <option value="500">Slower (0.5s/action)</option>
+        <option value="1000">Very slow (1s/action)</option>
+      </select>
+    </label>
+    <button class="primary" id="runAll">▶ Run all parts</button>
+    <button id="stop" disabled>■ Stop</button>
+    <a id="reportLink" href="/report/" target="_blank" rel="noopener">HTML report</a>
+  </div>
+  <div class="conn" id="conn"></div>
+</header>
+
+<main>
+  <!-- Part 1 -->
+  <section class="card" data-part="1">
+    <div class="card-head"><span class="num">1</span><h2>Login</h2><span class="pill">Not run</span><button class="play" data-run="1">▶ Run</button></div>
+    <div class="card-body">
+      <label>Testing branch URL<input id="baseUrl" placeholder="https://master.dev.marginedge.com/"></label>
+      <div class="row2">
+        <label>Username<input id="username" autocomplete="off"></label>
+        <label>Password<input id="password" type="password" autocomplete="off"></label>
+      </div>
+      <div class="live"></div><ul class="results"></ul><div class="fail"></div>
+    </div>
+  </section>
+
+  <!-- Part 2 -->
+  <section class="card" data-part="2">
+    <div class="card-head"><span class="num">2</span><h2>Create vendor</h2><span class="pill">Not run</span><button class="play" data-run="2">▶ Run</button></div>
+    <div class="card-body">
+      <label>Vendor name<input id="vendorName"></label>
+      <p class="hint">Email ordering is turned on with a random test email.</p>
+      <div class="live"></div><ul class="results"></ul><div class="fail"></div>
+    </div>
+  </section>
+
+  <!-- Part 3 -->
+  <section class="card" data-part="3">
+    <div class="card-head"><span class="num">3</span><h2>Create product</h2><span class="pill">Not run</span><button class="play" data-run="3">▶ Run</button></div>
+    <div class="card-body">
+      <label>Product name<input id="productName"></label>
+      <label>Category<input id="productCategory" list="categoryList" placeholder="e.g. Baked Goods"></label>
+      <datalist id="categoryList">
+        <option value="Baked Goods"><option value="Beer"><option value="Beverages"><option value="Cleaning Supplies">
+        <option value="Condiments"><option value="Dairy Products"><option value="Fish"><option value="Liquor">
+        <option value="Meat"><option value="Other Food"><option value="Paper Goods"><option value="Produce">
+        <option value="Restaurant Supplies"><option value="Seafood"><option value="Soft Beverages"><option value="Wine">
+      </datalist>
+      <div class="row2">
+        <label>Quantity (Kilogram)<input id="productQuantity" type="number" min="0" step="any"></label>
+        <label>Price ($)<input id="productPrice" type="number" min="0" step="0.01"></label>
+      </div>
+      <div class="live"></div><ul class="results"></ul><div class="fail"></div>
+    </div>
+  </section>
+
+  <!-- Part 4 -->
+  <section class="card" data-part="4">
+    <div class="card-head"><span class="num">4</span><h2>Create 2 vendor items</h2><span class="pill">Not run</span><button class="play" data-run="4">▶ Run</button></div>
+    <div class="card-body">
+      <div class="row2">
+        <label>Vendor item 1 name<input id="vendorItem1"></label>
+        <label>Vendor item 2 name<input id="vendorItem2"></label>
+      </div>
+      <p class="hint">Uses the vendor from Part 2 and the product from Part 3. Item code and packaging are random; Order Guide = Yes.</p>
+      <div class="live"></div><ul class="results"></ul><div class="fail"></div>
+    </div>
+  </section>
+
+  <!-- Part 5 -->
+  <section class="card wide" data-part="5">
+    <div class="card-head"><span class="num">5</span><h2>Orders: place → Initial Review → Reconciliation → Final Review (Closed)</h2><span class="pill">Not run</span><button class="play" data-run="5">▶ Run all 6</button></div>
+    <div class="card-body">
+      <p class="hint">3 orders per vendor item. Each order gets an <b>Initial Review date</b>, and in Reconciliation the invoice date is changed to the <b>Reconciliation date</b> and the price is changed to a new random value. The invoice number stays the same.</p>
+      <div class="orders">
+        <div><h3 id="item1Title">Vendor item 1</h3><div id="item1Orders"></div></div>
+        <div><h3 id="item2Title">Vendor item 2</h3><div id="item2Orders"></div></div>
+      </div>
+      <div class="live"></div><div class="fail"></div>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <div class="card-body">
+      <div class="tools">
+        <button id="newNames">🎲 New names (vendor, product, items)</button>
+        <button id="resetDates">📅 Reset dates (Initial Review: today / yesterday / day before · Reconciliation: 3 / 4 / 5 days ago)</button>
+      </div>
+      <p class="hint">Running a single part logs in first automatically. Later parts use the names typed above, so keep them the same as when Parts 2–4 created them.</p>
+    </div>
+  </section>
+
+  <details class="log" id="logBox"><summary>Run log</summary><pre id="log"></pre></details>
+</main>
+
+<script>
+// Opened via VS Code "Go Live" (Live Server)? Then talk to the runner backend on localhost:4321.
+const SERVED_BY_RUNNER = (location.protocol.startsWith('http') && location.port === '4321') || new URLSearchParams(location.search).has('local');
+// 127.0.0.1 (not 'localhost'): some browsers try IPv6 ::1 first, but the backend listens on 127.0.0.1
+const API = SERVED_BY_RUNNER ? '' : (new URLSearchParams(location.search).get('api') || 'http://127.0.0.1:4321');
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const FIELDS = ['baseUrl', 'username', 'password', 'vendorName', 'productName', 'productCategory', 'productQuantity', 'productPrice', 'vendorItem1', 'vendorItem2'];
+const STATUS_TEXT = { idle: 'Not run', queued: 'Queued', running: 'Running…', passed: 'Passed', failed: 'Failed', skipped: 'Skipped', stopped: 'Not run' };
+let fresh = null;
+let running = false;
+let tests = {}; // title -> { status, step, error, failedStep, location, results }
+
+// ---------- Part 5 order rows ----------
+for (const item of [1, 2]) {
+  const box = $(`#item${item}Orders`);
+  const head = document.createElement('div');
+  head.className = 'order head';
+  head.innerHTML = '<span></span><span>Initial Review date</span><span>Reconciliation date</span>';
+  box.appendChild(head);
+  for (let k = 0; k < 3; k++) {
+    const n = (item - 1) * 3 + k + 1;
+    const row = document.createElement('div');
+    row.className = 'order';
+    row.dataset.order = n;
+    row.innerHTML = `
+      <span class="title">Order ${n}</span>
+      <input type="date" id="ir${item}_${k}" aria-label="Initial Review date for order ${n}">
+      <input type="date" id="rc${item}_${k}" aria-label="Reconciliation date for order ${n}">
+      <span class="pill">Not run</span>
+      <button class="play" data-run="5.${n}" title="Run only order ${n}">▶</button>
+      <div class="detail"><div class="live"></div><ul class="results"></ul><div class="fail"></div></div>`;
+    box.appendChild(row);
+  }
+}
+// ---------- inputs ----------
+function fill(values) {
+  for (const f of FIELDS) if (values[f] !== undefined) $('#' + f).value = values[f];
+  for (const item of [1, 2]) {
+    (values[`item${item}InitialDates`] || []).forEach((d, k) => { $(`#ir${item}_${k}`).value = d; });
+    (values[`item${item}ReconDates`] || []).forEach((d, k) => { $(`#rc${item}_${k}`).value = d; });
+  }
+  updateTitles();
+}
+function collect() {
+  const v = {};
+  for (const f of FIELDS) v[f] = $('#' + f).value.trim();
+  for (const item of [1, 2]) {
+    v[`item${item}InitialDates`] = [0, 1, 2].map((k) => $(`#ir${item}_${k}`).value);
+    v[`item${item}ReconDates`] = [0, 1, 2].map((k) => $(`#rc${item}_${k}`).value);
+  }
+  return v;
+}
+function updateTitles() {
+  $('#item1Title').textContent = `Vendor item 1 — ${$('#vendorItem1').value || '…'}`;
+  $('#item2Title').textContent = `Vendor item 2 — ${$('#vendorItem2').value || '…'}`;
+}
+$('#vendorItem1').addEventListener('input', updateTitles);
+$('#vendorItem2').addEventListener('input', updateTitles);
+
+$('#newNames').onclick = async () => {
+  const r = await (await fetch(API + '/api/inputs')).json();
+  for (const f of ['vendorName', 'productName', 'vendorItem1', 'vendorItem2']) $('#' + f).value = r.fresh[f];
+  updateTitles();
+};
+$('#resetDates').onclick = () => fill({
+  item1InitialDates: fresh.item1InitialDates, item1ReconDates: fresh.item1ReconDates,
+  item2InitialDates: fresh.item2InitialDates, item2ReconDates: fresh.item2ReconDates,
+});
+
+// ---------- status rendering ----------
+const partOf = (title) => Number((title.match(/^Part (\d)/) || [])[1]);
+const orderOf = (title) => Number((title.match(/Order (\d)/) || [])[1]);
+
+function renderBox(el, info) {
+  const pill = $('.pill', el);
+  pill.className = 'pill ' + info.status;
+  pill.textContent = STATUS_TEXT[info.status] || info.status;
+  const live = $('.live', el);
+  live.classList.toggle('show', info.status === 'running' && !!info.step);
+  live.textContent = info.step ? '▶ ' + info.step : '';
+  const results = $('.results', el);
+  if (results) {
+    const lines = info.status === 'passed' ? (info.results || []) : [];
+    results.innerHTML = lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('');
+    results.classList.toggle('show', lines.length > 0);
+  }
+  const fail = $('.fail', el);
+  if (info.status === 'failed') {
+    fail.innerHTML = `<b>Failed at: ${escapeHtml(info.failedStep || '(before first step)')}</b>`
+      + (info.location ? `<span>${escapeHtml(info.location)}</span>` : '')
+      + `<pre>${escapeHtml(info.error || '')}</pre>`;
+    fail.classList.add('show');
+  } else {
+    fail.classList.remove('show');
+  }
+}
+
+function aggregate(list) {
+  if (!list.length) return { status: 'idle' };
+  const has = (s) => list.some((t) => t.status === s);
+  const running = list.find((t) => t.status === 'running');
+  if (running) return { status: 'running', step: running.step };
+  const failed = list.find((t) => t.status === 'failed');
+  if (failed) return { ...failed, status: 'failed' };
+  if (has('queued')) return { status: 'queued' };
+  if (list.every((t) => t.status === 'passed')) return { status: 'passed', results: list.flatMap((t) => t.results || []) };
+  if (has('passed')) return { status: 'passed' };
+  return { status: list[0].status };
+}
+
+function render() {
+  const all = Object.entries(tests);
+  for (const part of [1, 2, 3, 4, 5]) {
+    const card = $(`.card[data-part="${part}"]`);
+    const mine = all.filter(([t]) => partOf(t) === part).map(([, v]) => v);
+    if (part < 5) renderBox(card, mine.length ? mine[0] : { status: 'idle' });
+    else {
+      const agg = aggregate(mine);
+      const head = $('.card-head', card);
+      $('.pill', head).className = 'pill ' + agg.status;
+      $('.pill', head).textContent = STATUS_TEXT[agg.status] || agg.status;
+      for (const row of $$('.order[data-order]', card)) {
+        const entry = all.find(([t]) => partOf(t) === 5 && orderOf(t) === Number(row.dataset.order));
+        renderBox(row, entry ? entry[1] : { status: 'idle' });
+      }
+    }
+  }
+  const vals = Object.values(tests);
+  const count = (s) => vals.filter((t) => t.status === s).length;
+  $('#summary').textContent = running
+    ? `Running… ${count('passed')} passed, ${count('failed')} failed, ${count('queued') + count('running')} to go`
+    : vals.length ? `Last run: ${count('passed')} passed, ${count('failed')} failed${count('skipped') ? `, ${count('skipped')} skipped` : ''}` : 'Ready';
+  for (const b of $$('button[data-run], #runAll')) b.disabled = running;
+  $('#stop').disabled = !running;
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// ---------- running ----------
+async function run(targets) {
+  const inputs = collect();
+  const missing = ['baseUrl', 'username', 'password'].filter((f) => !inputs[f]);
+  if (missing.length) { alert('Please fill in Part 1: ' + missing.join(', ')); return; }
+  const r = await fetch(API + '/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targets, inputs, slowmo: Number($('#slowmo').value) }) });
+  if (!r.ok) alert((await r.json()).error || 'Could not start the run');
+}
+$('#runAll').onclick = () => run(['all']);
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-run]');
+  if (b) run([b.dataset.run]);
+});
+$('#stop').onclick = () => fetch(API + '/api/stop', { method: 'POST' });
+
+// ---------- live events ----------
+const logEl = $('#log');
+function log(line) {
+  const atBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 20;
+  logEl.textContent += line + '\n';
+  if (atBottom) logEl.scrollTop = logEl.scrollHeight;
+}
+
+function handle(msg) {
+  if (msg.type === 'runStart') { running = true; tests = {}; logEl.textContent = ''; $('#logBox').open = true; }
+  else if (msg.type === 'runEnd') {
+    running = false;
+    for (const t of Object.values(tests)) if (t.status === 'queued' || t.status === 'running') t.status = 'stopped';
+    log(`— run finished (exit code ${msg.code}) —`);
+  }
+  else if (msg.type === 'log') log(msg.line);
+  else if (msg.type === 'event') {
+    const e = msg.event;
+    if (e.type === 'begin') for (const t of e.tests) tests[t] = { status: 'queued' };
+    if (e.type === 'testBegin') tests[e.title] = { status: 'running' };
+    if (e.type === 'step') { tests[e.title] = { ...(tests[e.title] || {}), status: 'running', step: e.step }; }
+    if (e.type === 'testEnd') {
+      const status = e.status === 'timedOut' || e.status === 'interrupted' ? 'failed' : e.status;
+      tests[e.title] = { status, error: e.error, failedStep: e.failedStep, location: e.location, results: (e.results || []).filter((r) => /Result|Order \d|Vendor|Product|Category/.test(r)) };
+    }
+  }
+  render();
+}
+
+const conn = $('#conn');
+function setConn(ok) {
+  conn.className = 'conn ' + (ok ? 'ok' : 'down');
+  conn.innerHTML = ok
+    ? `● Connected to runner backend${API ? ' at ' + escapeHtml(API) : ''}`
+    : `● Runner backend not reachable${API ? ' at ' + escapeHtml(API) : ''}. Start it in a terminal in the project folder: <code>npm run runner:backend</code> — this page reconnects automatically.`;
+  for (const b of $$('button[data-run], #runAll, #newNames')) if (!ok) b.disabled = true;
+}
+$('#reportLink').href = API + '/report/';
+
+let es = null;
+let loaded = false;
+async function connect() {
+  let r;
+  try {
+    r = await (await fetch(API + '/api/inputs')).json();
+  } catch {
+    setConn(false);           // backend really not reachable — retry
+    setTimeout(connect, 3000);
+    return;
+  }
+  setConn(true);
+  try {
+    fresh = r.fresh;
+    if (!loaded) { fill(r.saved); loaded = true; }
+    render();
+  } catch (e) {
+    console.error(e);
+    conn.className = 'conn down';
+    conn.textContent = '● Page error (not a connection problem): ' + e.message;
+    return;
+  }
+  if (es) es.close();
+  tests = {}; logEl.textContent = '';
+  es = new EventSource(API + '/api/events');
+  es.onmessage = (m) => handle(JSON.parse(m.data));
+  es.onerror = () => { es.close(); es = null; setConn(false); setTimeout(connect, 3000); };
+}connect();
+</script>
+</body>
+</html>

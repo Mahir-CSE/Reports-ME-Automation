@@ -1,0 +1,23 @@
+{
+  "name": "price-movers",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:demo": "cross-env SLOWMO=500 KEEP_OPEN=1 playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "runner": "node runner/server.mjs",
+    "runner:backend": "cross-env RUNNER_NO_OPEN=1 node runner/server.mjs"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
+    "cross-env": "^10.1.0",
+    "dotenv": "^18.0.10"
+  }
+}

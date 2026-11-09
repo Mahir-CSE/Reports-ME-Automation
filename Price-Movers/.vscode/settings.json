@@ -1,0 +1,14 @@
+{
+  // VS Code Live Server ("Go Live"): don't reload the runner page when tests write results
+  "liveServer.settings.ignoreFiles": [
+    ".vscode/**",
+    "**/node_modules/**",
+    "**/test-results/**",
+    "**/playwright-report/**",
+    "**/blob-report/**",
+    "**/playwright/.auth/**",
+    "**/runner/inputs.json",
+    "**/*.ts",
+    "**/*.mjs"
+  ]
+}
